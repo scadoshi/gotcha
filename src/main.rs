@@ -1,6 +1,6 @@
 mod camera;
-mod capture_state;
 mod run;
+mod state;
 
 #[cfg(target_os = "linux")]
 use run::linux::run;

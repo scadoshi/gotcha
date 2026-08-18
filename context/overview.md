@@ -1,4 +1,4 @@
-# Capture
+# Gotcha
 
 Security tool that catches people accessing your computer while you're away.
 

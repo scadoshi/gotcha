@@ -2,14 +2,14 @@ use crate::camera::Camera;
 use jiff::{Timestamp, Unit, civil::DateTime, tz::TimeZone};
 use std::fs::create_dir_all;
 
-pub struct CaptureState {
+pub struct GotchaState {
     camera: Camera,
     last_shot_at: DateTime,
 }
 
-const OUTPUT_DIR: &str = "captures";
+const OUTPUT_DIR: &str = "gotchas";
 
-impl CaptureState {
+impl GotchaState {
     pub fn new() -> anyhow::Result<Self> {
         create_dir_all(OUTPUT_DIR)?;
         println!("Output directory created");

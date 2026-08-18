@@ -1,12 +1,12 @@
 use anyhow::anyhow;
 use rdev::{Event, EventType, Key, grab};
 
-use crate::capture_state::CaptureState;
+use crate::state::GotchaState;
 use std::{rc::Rc, sync::Mutex};
 
 pub fn run() -> anyhow::Result<()> {
-    let state = Rc::new(Mutex::new(CaptureState::new()?));
-    println!("CaptureState initialized");
+    let state = Rc::new(Mutex::new(GotchaState::new()?));
+    println!("GotchaState initialized");
 
     let clone = state.clone();
     let callback = move |event: Event| -> Option<Event> {

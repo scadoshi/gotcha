@@ -221,19 +221,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
-name = "capture"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "evdev",
- "image",
- "jiff",
- "nix 0.31.1",
- "nokhwa",
- "rdev",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -715,6 +702,19 @@ name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
+name = "gotcha"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "evdev",
+ "image",
+ "jiff",
+ "nix 0.31.1",
+ "nokhwa",
+ "rdev",
+]
 
 [[package]]
 name = "half"
