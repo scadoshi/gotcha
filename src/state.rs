@@ -26,8 +26,8 @@ impl GotchaState {
             let image = self.camera.shoot()?;
             let file_name = format!("{}.png", now.strftime("%Y-%m-%d_%H-%M-%S%.3f"));
             println!("Gotcha!");
-            image.save(format!("{}/{}", OUTPUT_DIR, file_name))?;
-            println!("Image {} saved", file_name);
+            image.save(format!("{OUTPUT_DIR}/{file_name}"))?;
+            println!("Image {file_name} saved");
             self.last_shot_at = now;
         }
         Ok(())
