@@ -1,9 +1,17 @@
-use crate::capture_state::CaptureState;
-use anyhow::anyhow;
-use evdev::{Device, EventSummary, EventType, InputEvent, KeyCode, RelativeAxisCode};
-use nix::poll::{PollFd, PollFlags, PollTimeout};
-use std::{os::fd::AsFd, rc::Rc, sync::Mutex};
+//! Linux: grabs the keyboards and mice under `/dev/input` with `evdev` and
+//! polls them. Only those devices, since grabbing everything takes Bluetooth
+//! and network controllers with it.
 
+use crate::{domain::Unlock, gotcha::Gotcha};
+use evdev::{Device, EventSummary, EventType, KeyCode, RelativeAxisCode};
+use nix::poll::{PollFd, PollFlags, PollTimeout};
+use std::{os::fd::AsFd, path::Path};
+
+/// The key presses, in order, that release the grab.
+const SECRET: &[KeyCode] = &[KeyCode::KEY_ESC];
+
+/// A keyboard repeats keys and has letters, enter and space; a mouse reports
+/// relative movement on both axes.
 trait Identify {
     fn is_probably_keyboard(&self) -> bool;
     fn is_probably_mouse(&self) -> bool;
@@ -18,6 +26,7 @@ impl Identify for Device {
                     && keys.contains(KeyCode::KEY_SPACE)
             })
     }
+
     fn is_probably_mouse(&self) -> bool {
         self.supported_relative_axes().is_some_and(|axes| {
             axes.contains(RelativeAxisCode::REL_X) && axes.contains(RelativeAxisCode::REL_Y)
@@ -25,78 +34,58 @@ impl Identify for Device {
     }
 }
 
-trait IsSecret {
-    fn is_secret(&self) -> bool;
-}
+pub fn run(output_dir: &Path) -> anyhow::Result<()> {
+    let mut gotcha = Gotcha::new(output_dir)?;
+    let mut unlock = Unlock::new(SECRET);
 
-impl IsSecret for InputEvent {
-    fn is_secret(&self) -> bool {
-        matches!(
-            self.destructure(),
-            EventSummary::Key(_, KeyCode::KEY_ESC, 1)
-        )
-    }
-}
-
-#[cfg(target_os = "linux")]
-pub fn run() -> anyhow::Result<()> {
-    let state = Rc::new(Mutex::new(CaptureState::new()?));
-    println!("CaptureState initialized");
-
-    let mut devices = evdev::enumerate()
-        .map(|(_, d)| d)
-        .filter(|d| d.is_probably_mouse() || d.is_probably_keyboard())
-        .collect::<Vec<Device>>();
-    println!("Mouse and keyboard devices identified");
-
-    for device in devices.iter_mut() {
+    let mut devices: Vec<Device> = evdev::enumerate()
+        .map(|(_, device)| device)
+        .filter(|device| device.is_probably_mouse() || device.is_probably_keyboard())
+        .collect();
+    for device in &mut devices {
         device.grab()?;
     }
-    println!("Devices grabbed");
+    println!("Grabbed {} devices", devices.len());
 
-    let mut should_break = false;
-    loop {
+    'grabbed: loop {
+        // Built each round because a PollFd borrows its device.
         let mut poll_fds: Vec<PollFd> = devices
             .iter()
-            .map(|d| PollFd::new(d.as_fd(), PollFlags::POLLIN))
+            .map(|device| PollFd::new(device.as_fd(), PollFlags::POLLIN))
             .collect();
         nix::poll::poll(&mut poll_fds, PollTimeout::NONE)?;
-
         let ready: Vec<usize> = poll_fds
             .iter()
             .enumerate()
-            .filter(|(_, pfd)| {
-                pfd.revents()
+            .filter(|(_, fd)| {
+                fd.revents()
                     .is_some_and(|flags| flags.contains(PollFlags::POLLIN))
             })
             .map(|(i, _)| i)
             .collect();
         drop(poll_fds);
 
-        'device_loop: for i in ready {
-            for event in devices[i].fetch_events()? {
-                if event.is_secret() {
-                    should_break = true;
-                    println!("Secret key pressed");
-                    println!("Exiting process");
-                    break 'device_loop;
-                } else if let Err(e) = state
-                    .lock()
-                    .map_err(|e| anyhow!("{}", e))
-                    .and_then(|mut s| s.maybe_shoot_and_save().map_err(|e| anyhow!("{}", e)))
+        for i in ready {
+            let Some(device) = devices.get_mut(i) else {
+                continue;
+            };
+            for event in device.fetch_events()? {
+                // A key event's value is 1 on press, 0 on release, 2 on repeat.
+                if let EventSummary::Key(_, key, 1) = event.destructure()
+                    && unlock.press(key)
                 {
-                    eprintln!("Failed to shoot: {:?}", e);
+                    println!("Secret entered, releasing devices");
+                    break 'grabbed;
+                }
+                if let Err(e) = gotcha.on_input() {
+                    eprintln!("Failed to shoot: {e:?}");
                 }
             }
         }
-
-        if should_break {
-            for device in devices.iter_mut() {
-                device.ungrab()?;
-            }
-            break;
-        }
     }
 
+    for device in &mut devices {
+        device.ungrab()?;
+    }
     Ok(())
 }

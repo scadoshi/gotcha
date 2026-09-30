@@ -23,12 +23,12 @@ The app needs access to `/dev/input/*` devices to grab keyboards and mice.
    sudo usermod -aG input $USER
    ```
 2. Log out and back in for the group change to take effect
-3. Verify with `groups` — you should see `input` in the list
+3. Verify with `groups`: `input` should be in the list
 4. Run with `cargo run`
 
 ## Usage
 
 1. Run `cargo run`
-2. All keyboard and mouse input will be grabbed — the desktop becomes unresponsive
-3. Any input triggers a timestamped webcam photo saved to `captures/`
-4. Press **Escape** to release all devices and exit
+2. All keyboard and mouse input is grabbed and the desktop stops responding
+3. Any input triggers a timestamped webcam photo saved to `gotchas/`
+4. Press **Escape** to release all devices and exit. The secret is `SECRET` in `src/run/<platform>.rs`, and can be a sequence
