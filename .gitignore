@@ -2,3 +2,6 @@
 /captures
 .DS_Store
 /gotchas
+
+# Worktrees created by Claude Code sessions
+.claude/worktrees/
