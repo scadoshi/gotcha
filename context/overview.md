@@ -23,7 +23,11 @@ The secret is `SECRET` in each platform module, a slice of that platform's key t
 
 macOS: `rdev::grab` has no stop call, so unlocking calls `process::exit(0)`. Needs Accessibility access for the terminal.
 
-Linux: `rdev` grabs every evdev device, Bluetooth and network controllers included, which disconnects them. So the Linux path uses `evdev` directly and grabs only devices that look like a keyboard (repeat events plus A, Enter and Space) or a mouse (relative X and Y). The user has to be in the `input` group. Rebuilds the `PollFd` list every round because each one borrows its device.
+Linux: `rdev` grabs every evdev device, Bluetooth and network controllers included, which disconnects them. So the Linux path uses `evdev` directly.
+
+- It grabs only devices that look like a keyboard (repeat events plus A, Enter and Space) or a mouse (relative X and Y).
+- The user has to be in the `input` group.
+- It rebuilds the `PollFd` list every round, because each one borrows its device.
 
 ## Checks
 
