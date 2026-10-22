@@ -1,15 +1,13 @@
 //! Shoots and saves a photo when input arrives, at most once a second.
 
-use crate::{
-    camera::Camera,
-    domain::{Shutter, file_name},
-};
+use std::fs::create_dir_all;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
+
 use jiff::Zoned;
-use std::{
-    fs::create_dir_all,
-    path::{Path, PathBuf},
-    time::{Duration, Instant},
-};
+
+use crate::camera::Camera;
+use crate::domain::{Shutter, file_name};
 
 const INTERVAL: Duration = Duration::from_secs(1);
 

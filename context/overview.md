@@ -32,9 +32,11 @@ Linux: `rdev` grabs every evdev device, Bluetooth and network controllers includ
 ## Checks
 
 ```bash
-cargo fmt
+cargo +nightly fmt
 cargo test
 cargo clippy --all-targets -- -D warnings
 ```
+
+`cargo fmt` needs nightly because rustfmt.toml uses unstable options.
 
 The Linux module only compiles on Linux; `cargo check --target x86_64-unknown-linux-gnu` from a Mac fails in mozjpeg's build script before it reaches this crate.

@@ -1,8 +1,6 @@
 use image::{ImageBuffer, Rgb};
-use nokhwa::{
-    pixel_format::RgbFormat,
-    utils::{CameraIndex, RequestedFormat, RequestedFormatType},
-};
+use nokhwa::pixel_format::RgbFormat;
+use nokhwa::utils::{CameraIndex, RequestedFormat, RequestedFormatType};
 
 pub struct Camera(nokhwa::Camera);
 

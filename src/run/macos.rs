@@ -1,10 +1,15 @@
 //! macOS: grabs every input event through the Accessibility API with `rdev`.
 //! The grab has no stop call, so unlocking exits the process.
 
-use crate::{domain::Unlock, gotcha::Gotcha};
+use std::path::Path;
+use std::rc::Rc;
+use std::sync::Mutex;
+
 use anyhow::anyhow;
 use rdev::{Event, EventType, Key, grab};
-use std::{path::Path, rc::Rc, sync::Mutex};
+
+use crate::domain::Unlock;
+use crate::gotcha::Gotcha;
 
 /// The key presses, in order, that release the grab.
 const SECRET: &[Key] = &[Key::Escape];

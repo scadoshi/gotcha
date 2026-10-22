@@ -2,10 +2,14 @@
 //! polls them. Only those devices, since grabbing everything takes Bluetooth
 //! and network controllers with it.
 
-use crate::{domain::Unlock, gotcha::Gotcha};
+use std::os::fd::AsFd;
+use std::path::Path;
+
 use evdev::{Device, EventSummary, EventType, KeyCode, RelativeAxisCode};
 use nix::poll::{PollFd, PollFlags, PollTimeout};
-use std::{os::fd::AsFd, path::Path};
+
+use crate::domain::Unlock;
+use crate::gotcha::Gotcha;
 
 /// The key presses, in order, that release the grab.
 const SECRET: &[KeyCode] = &[KeyCode::KEY_ESC];

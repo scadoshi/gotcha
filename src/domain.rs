@@ -2,11 +2,10 @@
 //! what the photo is called. No camera, no input devices, no clock. The caller
 //! passes the key and the time in.
 
+use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+
 use jiff::Zoned;
-use std::{
-    collections::VecDeque,
-    time::{Duration, Instant},
-};
 
 /// Matches key presses against a secret sequence, one press at a time.
 #[derive(Debug, Clone)]
@@ -77,8 +76,10 @@ pub fn file_name(at: &Zoned) -> String {
 
 #[cfg(test)]
 mod tests {
+    use jiff::Timestamp;
+    use jiff::tz::TimeZone;
+
     use super::*;
-    use jiff::{Timestamp, tz::TimeZone};
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum Key {
