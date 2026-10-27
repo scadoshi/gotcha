@@ -14,6 +14,11 @@
 * limitations under the License.
 */
 
+#![allow(
+    warnings,
+    reason = "vendored upstream code, kept as published apart from the gotcha patch"
+)]
+
 // hello, future peng here
 // whatever is written here will induce horrors uncomprehendable.
 // save yourselves. write apple code in swift and bind it to rust.
