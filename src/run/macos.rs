@@ -87,10 +87,9 @@ fn key_for(c: char) -> Option<u16> {
 /// Drops every keyboard and mouse event and shoots on each one until `secret` is
 /// typed.
 ///
-/// The camera opens and shoots on this thread, the one the program started on.
-/// `AVFoundation` raises an Objective-C exception configuring some cameras from any
-/// other thread, and that aborts the process. The event tap gets its own thread
-/// and run loop instead.
+/// The camera opens and shoots on this thread, the one the program started on,
+/// where `AVFoundation` setup is safest. The event tap gets its own thread and run
+/// loop instead.
 ///
 /// # Errors
 ///

@@ -17,6 +17,12 @@ core-graphics = "0.25"
 evdev = "0.13.2"
 nix = { version = "0.31.1", features = ["poll"] }
 
+# nokhwa-bindings-macos 0.2.3 (and 0.2.4, the latest) can pair a camera format with
+# another format's frame rate. AVFoundation answers with an Objective-C exception,
+# which aborts the process. vendor/ holds 0.2.3 with that fixed.
+[patch.crates-io]
+nokhwa-bindings-macos = { path = "vendor/nokhwa-bindings-macos" }
+
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"
 missing_docs = "warn"
