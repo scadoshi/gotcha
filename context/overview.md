@@ -11,7 +11,7 @@ src/
                  file_name. No I/O, all the tests
   gotcha.rs      Gotcha: camera + Shutter + output dir; on_input() shoots and saves
   camera.rs      nokhwa: opens the first camera, warms it up, shoots RGB frames
-  run/macos.rs   rdev grab through the Accessibility API; exits on unlock
+  run/macos.rs   CGEventTap that drops every event; camera on its own thread
   run/linux.rs   evdev grab of keyboards and mice only, nix poll loop; ungrabs on unlock
 ```
 
@@ -21,9 +21,9 @@ The secret comes from `--password <secret>` or `--pw <secret>` and defaults to `
 
 ## Platform notes
 
-macOS: `rdev::grab` has no stop call, so unlocking calls `process::exit(0)`. Needs Accessibility access for the terminal.
+macOS: a `core-graphics` event tap at the HID level that answers `Drop` for every keyboard and mouse event, which hands macOS a null event. The run loop runs in quarter-second slices and turns the tap back on after each, since macOS disables a tap whose callback was slow. The camera lives on its own thread and the tap only sends it a message, so a slow frame never stalls input. Unlocking stops the run loop. Needs Accessibility access for the terminal; without it macOS refuses the tap and the program says so. The secret matches keys by their position on a US keyboard.
 
-Linux: `rdev` grabs every evdev device, Bluetooth and network controllers included, which disconnects them. So the Linux path uses `evdev` directly.
+Linux: grabbing every evdev device takes Bluetooth and network controllers with it and disconnects them, so the Linux path picks keyboards and mice itself with `evdev`.
 
 - It grabs only devices that look like a keyboard (repeat events plus A, Enter and Space) or a mouse (relative X and Y).
 - The user has to be in the `input` group.

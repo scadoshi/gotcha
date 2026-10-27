@@ -10,9 +10,11 @@ Working on macOS and Linux.
 
 The app needs Accessibility API access to grab input devices.
 
-1. Open **System Preferences > Security & Privacy > Privacy > Accessibility**
+1. Open **System Settings > Privacy & Security > Accessibility**
 2. Add your terminal app (e.g. Terminal.app, iTerm2, Alacritty) to the list
 3. Run with `cargo run`
+
+If input stops being blocked after a macOS update, remove the terminal from that list and add it back.
 
 ### Linux
 
