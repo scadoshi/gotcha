@@ -2,12 +2,12 @@ use image::{ImageBuffer, Rgb};
 use nokhwa::pixel_format::RgbFormat;
 use nokhwa::utils::{CameraIndex, RequestedFormat, RequestedFormatType};
 
-pub struct Camera(nokhwa::Camera);
+pub(crate) struct Camera(nokhwa::Camera);
 
 const WARMUP_FRAME_COUNT: usize = 30;
 
 impl Camera {
-    pub fn new() -> anyhow::Result<Self> {
+    pub(crate) fn new() -> anyhow::Result<Self> {
         let mut camera = nokhwa::Camera::new(
             CameraIndex::Index(0),
             RequestedFormat::new::<RgbFormat>(RequestedFormatType::AbsoluteHighestResolution),
@@ -21,7 +21,7 @@ impl Camera {
         Ok(Self(camera))
     }
 
-    pub fn shoot(&mut self) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
+    pub(crate) fn shoot(&mut self) -> anyhow::Result<ImageBuffer<Rgb<u8>, Vec<u8>>> {
         let image = self.0.frame()?.decode_image::<RgbFormat>()?;
         println!("Frame shot");
         Ok(image)

@@ -14,7 +14,7 @@ use crate::gotcha::Gotcha;
 /// The key presses, in order, that release the grab.
 const SECRET: &[Key] = &[Key::Escape];
 
-pub fn run(output_dir: &Path) -> anyhow::Result<()> {
+pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
     // The callback is a Fn, so both live behind a Mutex; the camera is not
     // Send, so Rc rather than Arc.
     let gotcha = Rc::new(Mutex::new(Gotcha::new(output_dir)?));

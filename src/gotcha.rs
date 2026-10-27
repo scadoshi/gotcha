@@ -11,7 +11,7 @@ use crate::domain::{Shutter, file_name};
 
 const INTERVAL: Duration = Duration::from_secs(1);
 
-pub struct Gotcha {
+pub(crate) struct Gotcha {
     camera: Camera,
     shutter: Shutter,
     output_dir: PathBuf,
@@ -19,7 +19,7 @@ pub struct Gotcha {
 
 impl Gotcha {
     /// Creates `output_dir` and warms the camera up.
-    pub fn new(output_dir: &Path) -> anyhow::Result<Self> {
+    pub(crate) fn new(output_dir: &Path) -> anyhow::Result<Self> {
         create_dir_all(output_dir)?;
         println!("Output directory {} ready", output_dir.display());
         Ok(Self {
@@ -30,7 +30,7 @@ impl Gotcha {
     }
 
     /// Shoots and saves a photo, unless one was shot within the last second.
-    pub fn on_input(&mut self) -> anyhow::Result<()> {
+    pub(crate) fn on_input(&mut self) -> anyhow::Result<()> {
         if !self.shutter.fire(Instant::now()) {
             return Ok(());
         }

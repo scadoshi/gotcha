@@ -9,13 +9,13 @@ use jiff::Zoned;
 
 /// Matches key presses against a secret sequence, one press at a time.
 #[derive(Debug, Clone)]
-pub struct Unlock<K> {
+pub(crate) struct Unlock<K> {
     secret: Vec<K>,
     recent: VecDeque<K>,
 }
 
 impl<K: PartialEq + Copy> Unlock<K> {
-    pub fn new(secret: impl Into<Vec<K>>) -> Self {
+    pub(crate) fn new(secret: impl Into<Vec<K>>) -> Self {
         let secret = secret.into();
         Self {
             recent: VecDeque::with_capacity(secret.len()),
@@ -25,7 +25,7 @@ impl<K: PartialEq + Copy> Unlock<K> {
 
     /// Feeds one key press. True when the last presses spell the secret.
     /// An empty secret never unlocks.
-    pub fn press(&mut self, key: K) -> bool {
+    pub(crate) fn press(&mut self, key: K) -> bool {
         if self.secret.is_empty() {
             return false;
         }
@@ -43,13 +43,13 @@ impl<K: PartialEq + Copy> Unlock<K> {
 
 /// Allows one shot per interval. The first request always fires.
 #[derive(Debug, Clone)]
-pub struct Shutter {
+pub(crate) struct Shutter {
     interval: Duration,
     last: Option<Instant>,
 }
 
 impl Shutter {
-    pub fn new(interval: Duration) -> Self {
+    pub(crate) fn new(interval: Duration) -> Self {
         Self {
             interval,
             last: None,
@@ -57,7 +57,7 @@ impl Shutter {
     }
 
     /// True when a shot is allowed at `now`, which then starts the next interval.
-    pub fn fire(&mut self, now: Instant) -> bool {
+    pub(crate) fn fire(&mut self, now: Instant) -> bool {
         if self
             .last
             .is_some_and(|last| now.duration_since(last) < self.interval)
@@ -70,7 +70,7 @@ impl Shutter {
 }
 
 /// `2026-09-30_09-08-37.123.png`: sorts by time in a directory listing.
-pub fn file_name(at: &Zoned) -> String {
+pub(crate) fn file_name(at: &Zoned) -> String {
     format!("{}.png", at.strftime("%Y-%m-%d_%H-%M-%S%.3f"))
 }
 

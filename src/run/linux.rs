@@ -38,7 +38,7 @@ impl Identify for Device {
     }
 }
 
-pub fn run(output_dir: &Path) -> anyhow::Result<()> {
+pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
     let mut gotcha = Gotcha::new(output_dir)?;
     let mut unlock = Unlock::new(SECRET);
 
