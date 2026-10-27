@@ -17,5 +17,6 @@ use run::macos as platform;
 const OUTPUT_DIR: &str = "gotchas";
 
 fn main() -> anyhow::Result<()> {
-    platform::run(Path::new(OUTPUT_DIR))
+    let secret = domain::secret_from_args(std::env::args().skip(1))?;
+    platform::run(Path::new(OUTPUT_DIR), &secret)
 }

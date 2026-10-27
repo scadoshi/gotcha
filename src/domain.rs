@@ -69,6 +69,43 @@ impl Shutter {
     }
 }
 
+/// The secret when the command line names none.
+pub(crate) const DEFAULT_SECRET: &str = "test";
+
+/// The secret from `--password <secret>` or `--pw <secret>`, or [`DEFAULT_SECRET`].
+///
+/// Letters and digits only, since each character is matched as one key press.
+/// Letters are lowercased, because a key press does not carry Shift.
+///
+/// # Errors
+///
+/// When a flag has no value, the secret is empty or holds anything but letters
+/// and digits, or an argument is neither flag.
+pub(crate) fn secret_from_args(args: impl IntoIterator<Item = String>) -> anyhow::Result<String> {
+    let mut args = args.into_iter();
+    let mut secret = None;
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--password" | "--pw" => {
+                let Some(value) = args.next() else {
+                    anyhow::bail!("{arg} needs a value");
+                };
+                secret = Some(value);
+            }
+            other => anyhow::bail!(
+                "unexpected argument {other:?}; use --password <secret> or --pw <secret>"
+            ),
+        }
+    }
+    let secret = secret.map_or_else(|| DEFAULT_SECRET.to_string(), |s| s.to_ascii_lowercase());
+    anyhow::ensure!(!secret.is_empty(), "the secret is empty");
+    anyhow::ensure!(
+        secret.chars().all(|c| c.is_ascii_alphanumeric()),
+        "the secret may hold only letters and digits"
+    );
+    Ok(secret)
+}
+
 /// `2026-09-30_09-08-37.123.png`: sorts by time in a directory listing.
 pub(crate) fn file_name(at: &Zoned) -> String {
     format!("{}.png", at.strftime("%Y-%m-%d_%H-%M-%S%.3f"))
@@ -134,6 +171,52 @@ mod tests {
         let mut unlock = Unlock::<Key>::new([]);
         assert!(!unlock.press(Key::Esc));
         assert!(!unlock.press(Key::Esc));
+    }
+
+    fn args(list: &[&str]) -> Vec<String> {
+        list.iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn no_arguments_use_the_default_secret() {
+        assert_eq!(secret_from_args(args(&[])).unwrap(), "test");
+    }
+
+    #[test]
+    fn password_and_pw_both_set_the_secret() {
+        assert_eq!(
+            secret_from_args(args(&["--password", "hunter2"])).unwrap(),
+            "hunter2"
+        );
+        assert_eq!(
+            secret_from_args(args(&["--pw", "abc123"])).unwrap(),
+            "abc123"
+        );
+    }
+
+    #[test]
+    fn letters_are_lowercased_since_a_key_press_carries_no_shift() {
+        assert_eq!(secret_from_args(args(&["--pw", "TeSt"])).unwrap(), "test");
+    }
+
+    #[test]
+    fn a_flag_without_a_value_is_an_error() {
+        let error = secret_from_args(args(&["--pw"])).unwrap_err();
+        assert!(error.to_string().contains("--pw"), "{error}");
+    }
+
+    #[test]
+    fn a_secret_that_cannot_be_typed_as_plain_keys_is_an_error() {
+        for bad in ["", "two words", "pass!", "naïve"] {
+            let result = secret_from_args(args(&["--password", bad]));
+            assert!(result.is_err(), "{bad:?} was accepted as {result:?}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_argument_is_an_error() {
+        let error = secret_from_args(args(&["--secret", "x"])).unwrap_err();
+        assert!(error.to_string().contains("--secret"), "{error}");
     }
 
     #[test]

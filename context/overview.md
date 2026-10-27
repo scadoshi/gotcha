@@ -17,7 +17,7 @@ src/
 
 The platform modules own the input devices and the event loop, and hand each key press to `Unlock` and each event to `Gotcha::on_input`. Everything that decides something lives in `domain.rs`, where it takes the key or the time as an argument, so the tests never touch a camera or a device.
 
-The secret is `SECRET` in each platform module, a slice of that platform's key type. `Unlock` is generic over the key so neither platform maps into a shared enum. Escape alone today; a longer sequence is a longer slice.
+The secret comes from `--password <secret>` or `--pw <secret>` and defaults to `test` (`domain::secret_from_args`). Each platform's `key_for` turns its letters and digits into that platform's key type. `Unlock` is generic over the key so neither platform maps into a shared enum.
 
 ## Platform notes
 

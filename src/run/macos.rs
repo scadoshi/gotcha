@@ -5,20 +5,65 @@ use std::path::Path;
 use std::rc::Rc;
 use std::sync::Mutex;
 
-use anyhow::anyhow;
+use anyhow::{Context, anyhow};
 use rdev::{Event, EventType, Key, grab};
 
 use crate::domain::Unlock;
 use crate::gotcha::Gotcha;
 
-/// The key presses, in order, that release the grab.
-const SECRET: &[Key] = &[Key::Escape];
+/// The key for one character of the secret: a letter (lowercase) or a digit.
+fn key_for(c: char) -> Option<Key> {
+    Some(match c {
+        'a' => Key::KeyA,
+        'b' => Key::KeyB,
+        'c' => Key::KeyC,
+        'd' => Key::KeyD,
+        'e' => Key::KeyE,
+        'f' => Key::KeyF,
+        'g' => Key::KeyG,
+        'h' => Key::KeyH,
+        'i' => Key::KeyI,
+        'j' => Key::KeyJ,
+        'k' => Key::KeyK,
+        'l' => Key::KeyL,
+        'm' => Key::KeyM,
+        'n' => Key::KeyN,
+        'o' => Key::KeyO,
+        'p' => Key::KeyP,
+        'q' => Key::KeyQ,
+        'r' => Key::KeyR,
+        's' => Key::KeyS,
+        't' => Key::KeyT,
+        'u' => Key::KeyU,
+        'v' => Key::KeyV,
+        'w' => Key::KeyW,
+        'x' => Key::KeyX,
+        'y' => Key::KeyY,
+        'z' => Key::KeyZ,
+        '0' => Key::Num0,
+        '1' => Key::Num1,
+        '2' => Key::Num2,
+        '3' => Key::Num3,
+        '4' => Key::Num4,
+        '5' => Key::Num5,
+        '6' => Key::Num6,
+        '7' => Key::Num7,
+        '8' => Key::Num8,
+        '9' => Key::Num9,
+        _ => return None,
+    })
+}
 
-pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
+pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
+    let keys: Vec<Key> = secret
+        .chars()
+        .map(key_for)
+        .collect::<Option<_>>()
+        .context("the secret holds a character with no key")?;
     // The callback is a Fn, so both live behind a Mutex; the camera is not
     // Send, so Rc rather than Arc.
     let gotcha = Rc::new(Mutex::new(Gotcha::new(output_dir)?));
-    let unlock = Rc::new(Mutex::new(Unlock::new(SECRET)));
+    let unlock = Rc::new(Mutex::new(Unlock::new(keys)));
 
     let callback = move |event: Event| -> Option<Event> {
         let unlocked = match event.event_type {

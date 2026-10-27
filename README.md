@@ -28,7 +28,7 @@ The app needs access to `/dev/input/*` devices to grab keyboards and mice.
 
 ## Usage
 
-1. Run `cargo run`
+1. Run `cargo run`, or `cargo run -- --password <secret>` (`--pw` for short) to choose the secret
 2. All keyboard and mouse input is grabbed and the desktop stops responding
 3. Any input triggers a timestamped webcam photo saved to `gotchas/`
-4. Press **Escape** to release all devices and exit. The secret is `SECRET` in `src/run/<platform>.rs`, and can be a sequence
+4. Type the secret to release all devices and exit: **test** unless you passed `--password`. Letters and digits only, and case does not matter, since a key press carries no Shift
