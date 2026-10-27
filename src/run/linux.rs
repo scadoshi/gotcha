@@ -14,6 +14,9 @@ use crate::gotcha::Gotcha;
 /// The key presses, in order, that release the grab.
 const SECRET: &[KeyCode] = &[KeyCode::KEY_ESC];
 
+/// An evdev key event's value on press; release is 0 and repeat is 2.
+const PRESSED: i32 = 1;
+
 /// A keyboard repeats keys and has letters, enter and space; a mouse reports
 /// relative movement on both axes.
 trait Identify {
@@ -38,6 +41,13 @@ impl Identify for Device {
     }
 }
 
+/// Grabs the keyboards and mice and shoots on their input until the secret is
+/// typed, then releases them.
+#[expect(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    reason = "the CLI's own progress and error lines"
+)]
 pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
     let mut gotcha = Gotcha::new(output_dir)?;
     let mut unlock = Unlock::new(SECRET);
@@ -53,7 +63,7 @@ pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
 
     'grabbed: loop {
         // Built each round because a PollFd borrows its device.
-        let mut poll_fds: Vec<PollFd> = devices
+        let mut poll_fds: Vec<PollFd<'_>> = devices
             .iter()
             .map(|device| PollFd::new(device.as_fd(), PollFlags::POLLIN))
             .collect();
@@ -74,8 +84,7 @@ pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
                 continue;
             };
             for event in device.fetch_events()? {
-                // A key event's value is 1 on press, 0 on release, 2 on repeat.
-                if let EventSummary::Key(_, key, 1) = event.destructure()
+                if let EventSummary::Key(_, key, PRESSED) = event.destructure()
                     && unlock.press(key)
                 {
                     println!("Secret entered, releasing devices");
