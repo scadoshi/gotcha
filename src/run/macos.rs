@@ -104,10 +104,15 @@ pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
         .context("the secret holds a character with no key")?;
     let mut gotcha = Gotcha::new(output_dir)?;
     let (shots, requests) = mpsc::channel::<()>();
-    let tap = spawn_tap(keys, shots)?;
+    let unlocked = Arc::new(AtomicBool::new(false));
+    let tap = spawn_tap(keys, shots, Arc::clone(&unlocked))?;
 
-    // Ends when the tap thread drops its sender, after the secret is typed.
+    // Ends when the tap thread drops its sender after the secret is typed. Inputs
+    // still queued at that moment are not shot.
     for () in requests {
+        if unlocked.load(Ordering::Relaxed) {
+            break;
+        }
         if let Err(error) = gotcha.on_input() {
             eprintln!("Failed to shoot: {error:?}");
         }
@@ -117,11 +122,15 @@ pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
 }
 
 /// Starts the event tap thread and waits until the tap is installed. Each input
-/// sends one `()` on `shots`.
-fn spawn_tap(keys: Vec<u16>, shots: mpsc::Sender<()>) -> anyhow::Result<JoinHandle<()>> {
+/// sends one `()` on `shots`; typing the secret sets `unlocked`.
+fn spawn_tap(
+    keys: Vec<u16>,
+    shots: mpsc::Sender<()>,
+    unlocked: Arc<AtomicBool>,
+) -> anyhow::Result<JoinHandle<()>> {
     let (ready, started) = mpsc::sync_channel::<anyhow::Result<()>>(1);
     let tap = thread::spawn(move || {
-        if let Err(error) = grab(keys, shots, &ready) {
+        if let Err(error) = grab(keys, shots, &unlocked, &ready) {
             ready.send(Err(error)).ok();
         }
     });
@@ -137,11 +146,11 @@ fn spawn_tap(keys: Vec<u16>, shots: mpsc::Sender<()>) -> anyhow::Result<JoinHand
 fn grab(
     keys: Vec<u16>,
     shots: mpsc::Sender<()>,
+    unlocked: &Arc<AtomicBool>,
     ready: &mpsc::SyncSender<anyhow::Result<()>>,
 ) -> anyhow::Result<()> {
     let unlock = Mutex::new(Unlock::new(keys));
-    let unlocked = Arc::new(AtomicBool::new(false));
-    let seen_unlock = Arc::clone(&unlocked);
+    let seen_unlock = Arc::clone(unlocked);
     let tap = CGEventTap::new(
         CGEventTapLocation::HID,
         CGEventTapPlacement::HeadInsertEventTap,
