@@ -1,8 +1,8 @@
 //! macOS: an event tap that drops every keyboard and mouse event until the
-//! secret is typed. The camera runs on its own thread, so the tap never waits on
-//! a frame.
+//! secret is typed. The tap runs on its own thread, so it never waits on a
+//! frame; the camera stays on the main thread.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread::{self, JoinHandle};
@@ -87,21 +87,61 @@ fn key_for(c: char) -> Option<u16> {
 /// Drops every keyboard and mouse event and shoots on each one until `secret` is
 /// typed.
 ///
+/// The camera opens and shoots on this thread, the one the program started on.
+/// `AVFoundation` raises an Objective-C exception configuring some cameras from any
+/// other thread, and that aborts the process. The event tap gets its own thread
+/// and run loop instead.
+///
 /// # Errors
 ///
 /// When the secret holds a character with no key, the camera does not open, or
 /// macOS refuses the event tap, which it does without Accessibility access.
-#[expect(clippy::print_stdout, reason = "the CLI's own progress lines")]
+#[expect(clippy::print_stderr, reason = "the CLI's own error lines")]
 pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
     let keys: Vec<u16> = secret
         .chars()
         .map(key_for)
         .collect::<Option<_>>()
         .context("the secret holds a character with no key")?;
+    let mut gotcha = Gotcha::new(output_dir)?;
+    let (shots, requests) = mpsc::channel::<()>();
+    let tap = spawn_tap(keys, shots)?;
+
+    // Ends when the tap thread drops its sender, after the secret is typed.
+    for () in requests {
+        if let Err(error) = gotcha.on_input() {
+            eprintln!("Failed to shoot: {error:?}");
+        }
+    }
+    tap.join()
+        .map_err(|_| anyhow!("the event tap thread panicked"))
+}
+
+/// Starts the event tap thread and waits until the tap is installed. Each input
+/// sends one `()` on `shots`.
+fn spawn_tap(keys: Vec<u16>, shots: mpsc::Sender<()>) -> anyhow::Result<JoinHandle<()>> {
+    let (ready, started) = mpsc::sync_channel::<anyhow::Result<()>>(1);
+    let tap = thread::spawn(move || {
+        if let Err(error) = grab(keys, shots, &ready) {
+            ready.send(Err(error)).ok();
+        }
+    });
+    started
+        .recv()
+        .context("the event tap thread stopped before it started")??;
+    Ok(tap)
+}
+
+/// Installs the tap on this thread's run loop, reports on `ready`, and runs the
+/// loop until the secret is typed.
+#[expect(clippy::print_stdout, reason = "the CLI's own progress lines")]
+fn grab(
+    keys: Vec<u16>,
+    shots: mpsc::Sender<()>,
+    ready: &mpsc::SyncSender<anyhow::Result<()>>,
+) -> anyhow::Result<()> {
     let unlock = Mutex::new(Unlock::new(keys));
     let unlocked = Arc::new(AtomicBool::new(false));
-    let (shots, shooter) = spawn_shooter(output_dir.to_path_buf())?;
-
     let seen_unlock = Arc::clone(&unlocked);
     let tap = CGEventTap::new(
         CGEventTapLocation::HID,
@@ -122,7 +162,7 @@ pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
                     return CallbackResult::Drop;
                 }
             }
-            // The camera thread may have stopped; the grab holds either way.
+            // The main thread may have stopped shooting; the grab holds either way.
             shots.send(()).ok();
             CallbackResult::Drop
         },
@@ -137,9 +177,9 @@ pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
         .map_err(|()| anyhow!("could not attach the event tap to the run loop"))?;
     // SAFETY: reads an immutable CoreFoundation constant.
     let mode = unsafe { kCFRunLoopDefaultMode };
-    let run_loop = CFRunLoop::get_current();
-    run_loop.add_source(&source, mode);
+    CFRunLoop::get_current().add_source(&source, mode);
     tap.enable();
+    ready.send(Ok(())).ok();
     println!("Grabbing input");
 
     while !unlocked.load(Ordering::Relaxed) {
@@ -147,39 +187,7 @@ pub(crate) fn run(output_dir: &Path, secret: &str) -> anyhow::Result<()> {
         tap.enable();
     }
     println!("Secret entered, releasing input");
-
-    drop(tap);
-    shooter
-        .join()
-        .map_err(|_| anyhow!("the camera thread panicked"))?;
     Ok(())
-}
-
-/// Starts the camera thread and waits until the camera is warm. Each `()` sent
-/// asks for a shot; dropping every sender ends the thread.
-#[expect(clippy::print_stderr, reason = "the CLI's own error lines")]
-fn spawn_shooter(output_dir: PathBuf) -> anyhow::Result<(mpsc::Sender<()>, JoinHandle<()>)> {
-    let (shots, requests) = mpsc::channel::<()>();
-    let (ready, started) = mpsc::sync_channel::<anyhow::Result<()>>(1);
-    let shooter = thread::spawn(move || {
-        let mut gotcha = match Gotcha::new(&output_dir) {
-            Ok(gotcha) => gotcha,
-            Err(error) => {
-                ready.send(Err(error)).ok();
-                return;
-            }
-        };
-        ready.send(Ok(())).ok();
-        for () in requests {
-            if let Err(error) = gotcha.on_input() {
-                eprintln!("Failed to shoot: {error:?}");
-            }
-        }
-    });
-    started
-        .recv()
-        .context("the camera thread stopped before it started")??;
-    Ok((shots, shooter))
 }
 
 #[cfg(test)]
