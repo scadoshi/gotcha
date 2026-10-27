@@ -49,13 +49,16 @@ impl Identify for Device {
     reason = "the CLI's own progress and error lines"
 )]
 pub(crate) fn run(output_dir: &Path) -> anyhow::Result<()> {
-    let mut gotcha = Gotcha::new(output_dir)?;
-    let mut unlock = Unlock::new(SECRET);
-
     let mut devices: Vec<Device> = evdev::enumerate()
         .map(|(_, device)| device)
         .filter(|device| device.is_probably_mouse() || device.is_probably_keyboard())
         .collect();
+    anyhow::ensure!(
+        !devices.is_empty(),
+        "no keyboard or mouse could be opened; is this user in the input group?"
+    );
+    let mut gotcha = Gotcha::new(output_dir)?;
+    let mut unlock = Unlock::new(SECRET);
     for device in &mut devices {
         device.grab()?;
     }
